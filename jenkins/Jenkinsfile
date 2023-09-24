@@ -10,11 +10,11 @@ pipeline {
           EXPORT_TEMPLATE_PROD_TAGS = 'prod-tags-export.json'
           STACK_NAME_DEPLOY_STAGING = """${bat(
                 returnStdout: true,
-                script: 'echo "sagemaker-${SAGEMAKER_PROJECT_NAME}-${SAGEMAKER_PROJECT_ID}-deploy-staging"'
+                script: 'echo "sagemaker-%SAGEMAKER_PROJECT_NAME%-%SAGEMAKER_PROJECT_ID%-deploy-staging"'
             ).trim()}"""
           STACK_NAME_DEPLOY_PROD = """${bat(
                 returnStdout: true,
-                script: 'echo "sagemaker-${SAGEMAKER_PROJECT_NAME}-${SAGEMAKER_PROJECT_ID}-deploy-prod"'
+                script: 'echo "sagemaker-%SAGEMAKER_PROJECT_NAME%-%SAGEMAKER_PROJECT_ID%-deploy-prod"'
             ).trim()}"""
           EXPORT_TEST_RESULTS = 'test-results.json'
   }
@@ -27,21 +27,21 @@ pipeline {
     stage('Build') {
       steps {
         withAWS(credentials:"${AWS_CREDENTIAL}",region:"${AWS_REGION}") {
-            bat '''python build.py --model-execution-role "$MODEL_EXECUTION_ROLE_ARN" \
-                --model-package-group-name "$SOURCE_MODEL_PACKAGE_GROUP_NAME" \
-                --sagemaker-project-id "$SAGEMAKER_PROJECT_ID" \
-                --sagemaker-project-name "$SAGEMAKER_PROJECT_NAME" \
-                --s3-bucket "$ARTIFACT_BUCKET" \
+            bat '''python build.py --model-execution-role "%MODEL_EXECUTION_ROLE_ARN%" \
+                --model-package-group-name "%SOURCE_MODEL_PACKAGE_GROUP_NAME%" \
+                --sagemaker-project-id "%SAGEMAKER_PROJECT_ID%" \
+                --sagemaker-project-name "%SAGEMAKER_PROJECT_NAME%" \
+                --s3-bucket "%ARTIFACT_BUCKET%" \
                 --export-cfn-params-tags "True"
             '''
 
             bat '''export PATH="$HOME/.local/bin:$PATH"
             aws cloudformation package --template endpoint-config-template.yml \
-                --s3-bucket $ARTIFACT_BUCKET --output-template $EXPORT_TEMPLATE_NAME
+                --s3-bucket %ARTIFACT_BUCKET% --output-template %EXPORT_TEMPLATE_NAME%
             '''
 
-            bat '''cat $EXPORT_TEMPLATE_STAGING_CONFIG
-                cat $EXPORT_TEMPLATE_PROD_CONFIG
+            bat '''cat %EXPORT_TEMPLATE_STAGING_CONFIG%
+                cat %EXPORT_TEMPLATE_PROD_CONFIG%
             '''
         }
       }
@@ -62,10 +62,10 @@ pipeline {
       steps {
         withAWS(credentials:"${AWS_CREDENTIAL}",region:"${AWS_REGION}") {
           bat '''python test/test.py \
-              --import-build-config $EXPORT_TEMPLATE_STAGING_CONFIG \
-              --export-test-results $EXPORT_TEST_RESULTS
+              --import-build-config %EXPORT_TEMPLATE_STAGING_CONFIG% \
+              --export-test-results %EXPORT_TEST_RESULTS%
           '''
-          bat 'cat $EXPORT_TEST_RESULTS'
+          bat 'cat %EXPORT_TEST_RESULTS%'
         }
       }
     }
